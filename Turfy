@@ -1,0 +1,435 @@
+#include <iostream> 
+#include <fstream> 
+#include <string> 
+#include <sstream> 
+using namespace std; 
+// Admin panel 
+class Admininfo 
+{ 
+private: 
+    string turfName; 
+    string turfDescription; 
+    int startTimes[100], endTimes[100], prices[100]; 
+    int n; 
+    int getLastTurfID()//for serealing turfid 
+    { 
+        ifstream fin("slotprice.txt"); 
+        string line; 
+        int id = 0; 
+        while (getline(fin, line)) 
+        { 
+            if (line.find("Turf ID: ") != string::npos) 
+            { 
+                stringstream ss(line.substr(9)); 
+                ss >> id; 
+            } 
+        } 
+        return id; 
+    } 
+public: 
+    void setTurfInfo() 
+    { 
+        cout << "Enter Turf Name: "; 
+        cin.ignore(); 
+        getline(cin, turfName); 
+        cout << "Enter Short Description: "; 
+        getline(cin, turfDescription); 
+        cout << "How many slot prices you want to enter? "; 
+        cin >> n; 
+        cin.ignore(); 
+        for (int i = 0; i < n; ++i)//loop for slot price type 
+        { 
+            int st, en, pr; 
+            cout << "\nSlot " << i + 1 << ":" << endl; 
+            cout << "Start Time: "; 
+            cin >> st; 
+            cout << "End Time: "; 
+            cin >> en; 
+            cout << "Price: "; 
+            cin >> pr; 
+            bool conflict = false; 
+            for (int j = 0; j < i; ++j)//check if time overlap 
+            { 
+                int ex_st = startTimes[j]; 
+                int ex_en = endTimes[j]; 
+                if ((st < en && ex_st < ex_en && max(st, ex_st) < min(en, ex_en)) || 
+                        (st > en && (st < ex_en || en > ex_st || ex_st > ex_en)) || 
+                        (ex_st > ex_en && (ex_st < en || ex_en > st))) 
+                { 
+                    conflict = true; 
+                    break; 
+                } 
+            } 
+            if (conflict) 
+            { 
+                cout << "This time slot overlaps with an existing one. Try again.\n"; 
+                --i; 
+                continue; 
+            } 
+            startTimes[i] = st; 
+ 
+            endTimes[i] = en; 
+            prices[i] = pr; 
+        } 
+        ofstream fout("slotprice.txt", ios::app);//file open for sent the input data to file 
+        if (!fout)//for check if file not found 
+        { 
+            cerr << "File could not be opened!" << endl; 
+            return; 
+        } 
+        int turfID = getLastTurfID() + 1;// for serealing 
+        fout << "Turf ID: " << turfID << endl; 
+        fout << "Turf Name: " << turfName << endl; 
+        fout << "Description: " << turfDescription << endl; 
+        fout << "Slot Prices:" << endl; 
+        for (int i = 0; i < n; ++i)//loop for time and price 
+        { 
+            fout << "From " << startTimes[i] << " to " << endTimes[i] 
+                 << " => " << prices[i] << " Taka" << endl; 
+        } 
+        fout << "---------------------------------------\n"; 
+        fout.close(); 
+        cout << "\nSlot prices saved to file successfully!" << endl; 
+    } 
+}; 
+ 
+class Admin 
+{ 
+private: 
+    string mobileNumber; 
+    string password; 
+    string adminname; 
+public: 
+    void signup() 
+    { 
+        //input for signup 
+        cout << "\n===========================\n"; 
+        cout << "Signup Page"; 
+        cout << "\n===========================\n"; 
+        cout << "Enter your mobile number: "; 
+        cin >> mobileNumber; 
+        cout << "Enter your full name: "; 
+        cin.ignore(); 
+        getline(cin, adminname); 
+        cout << "Enter password (minimum 6 characters): "; 
+        cin >> password; //input password 
+        while (password.length() < 6)//check password length 
+        { 
+            cout << "Password too short. Enter again: "; 
+            cin >> password; 
+        } 
+        ifstream file("turfadmin.txt");//read from file 
+        string m, p, a; 
+        int found = 0; 
+        if (file) 
+        { 
+            string line; 
+            while (getline(file, line)) 
+            { 
+                stringstream ss(line);////send stringstream 
+                ss >> m >> p; 
+                getline(ss, a); 
+                if (!a.empty() && a[0] == ' ') a.erase(0, 1);//if any space in middle of name erase it 
+                if (m == mobileNumber) //check mobile number exist 
+                { 
+                    found = 1; 
+                    break; 
+                } 
+            } 
+            file.close(); 
+        } 
+        if (found == 1) 
+        { 
+            cout << "Mobile number already exists. Try another one.\n"; 
+        } 
+        else 
+        { 
+            ofstream outFile("turfadmin.txt", ios::app); 
+            outFile << mobileNumber << " " << password << " " << adminname << endl;//send input data in 
+            
+            outFile.close(); 
+            cout << "Signup successful!\n"; 
+        } 
+    } 
+    void login() 
+    { 
+        cout << "\n===========================\n"; 
+        cout << "Login Page"; 
+        cout << "\n===========================\n"; 
+        cout << "Enter your mobile number: "; 
+        cin >> mobileNumber; 
+        cout << "Enter password: "; 
+        cin >> password; 
+        ifstream file("turfadmin.txt"); 
+        if (!file) //if file doesnot found t 
+        { 
+            cout << "Error opening file.\n"; 
+            return; 
+        } 
+        string line, m, p, a; 
+        int matched = 0; 
+        while (getline(file, line)) //loop for checking loging information 
+        { 
+            stringstream ss(line);//send stringstream 
+            ss >> m >> p; 
+            getline(ss, a); 
+            if (!a.empty() && a[0] == ' ') a.erase(0, 1); //check if space in name 
+            if (m == mobileNumber && p == password)//check mobile number and password is correct or not 
+            { 
+                matched = 1; 
+                adminname = a; 
+                break; 
+            } 
+        } 
+        file.close(); 
+        if (matched == 1) 
+        { 
+            cout << "Login successful. Welcome, " << adminname << "!\n"; 
+            Admininfo adinfo; 
+            adinfo.setTurfInfo();//if loging successful then go to Admininfo class 
+        } 
+        else 
+        { 
+            cout << "Invalid mobile number or password.\n"; 
+        } 
+    } 
+}; 
+// User panel 
+class user 
+{ 
+protected: 
+    string name; 
+public: 
+    void setName(string userName) 
+    { 
+        name = userName; 
+    } 
+    string getName() const 
+    { 
+        return name; 
+    } 
+}; 
+class Customer : public user 
+{ 
+public: 
+    void bookTurf()//function for booking turf 
+    { 
+        string turfName, date, timeSlot; 
+ 
+        cin.ignore(); 
+        cout << "Enter Turf Name (exactly as shown): "; 
+        getline(cin, turfName); 
+        cout << "Enter Booking Date (YYYY-MM-DD): "; 
+        getline(cin, date); 
+        cout << "Enter Time Slot (e.g. 10-11): "; 
+        getline(cin, timeSlot); 
+        ofstream outFile("bookings.txt", ios::app);//open file and send input data to the file 
+        if (outFile.is_open()) 
+        { 
+            outFile << name << "," << turfName << "," << date << "," << timeSlot << endl; 
+            outFile.close(); 
+            cout << "Booking Successful \n"; 
+        } 
+        else 
+        { 
+            cout << "Error: Could not save booking.\n"; 
+        } 
+    } 
+ 
+    void viewMyBookings() 
+    { 
+        ifstream file("bookings.txt");//file open to view if any booking added 
+        string lineName, turf, date, slot; 
+        bool found = false; 
+        cout << "\n=== Your Bookings ===\n"; 
+        while (getline(file, lineName, ',') && getline(file, turf, ',') && 
+                getline(file, date, ',') && getline(file, slot)) 
+        { 
+            if (lineName == name)//check if any booking added 
+            { 
+                found = true; 
+                cout << "Turf     : " << turf << "\n"; 
+                cout << "Date     : " << date << "\n"; 
+                cout << "Time     : " << slot << "\n"; 
+                cout << "--------------------------\n"; 
+            } 
+        } 
+ 
+        if (!found) 
+        { 
+            cout << "No bookings found for " << name << ".\n"; 
+        } 
+        file.close(); 
+    } 
+ 
+    void viewAvailableTurfs() 
+    { 
+        ifstream file("slotprice.txt");//file open for get turflist added by admin 
+        if (!file)//check if file exist 
+        { 
+            cout << "No turfs found.\n"; 
+            return; 
+        } 
+ 
+        cout << "\n=== Available Turfs ===\n"; 
+        string line; 
+        string turfName, turfDesc; 
+        bool readingSlots = false; 
+        while (getline(file, line)) 
+        { 
+            if (line == "---------------------------------------") 
+            { 
+                readingSlots = false; 
+                cout << "----------------------------\n"; 
+                continue; 
+            } 
+            if (line.find("Turf Name:") == 0) 
+            { 
+                turfName = line.substr(10); 
+                cout << "Turf Name: " << turfName << "\n"; 
+            } 
+            else if (line.find("Description:") == 0) 
+            { 
+                turfDesc = line.substr(12); 
+                cout << "Description: " << turfDesc << "\n"; 
+            } 
+            else if (line.find("Slot Prices:") == 0) 
+            { 
+                readingSlots = true; 
+                cout << "Slot Prices:\n"; 
+            } 
+            else if (readingSlots) 
+            { 
+                cout << "  " << line << "\n"; 
+            } 
+        } 
+        file.close(); 
+    } 
+ 
+    void interfaceUser() 
+    { 
+        //input user info for user interface 
+        string userName; 
+        int choice ; 
+        cin.ignore(); 
+        cout << "\n===========================\n"; 
+        cout << "Enter your name to continue: "; 
+        getline(cin, userName); 
+        setName(userName); 
+        cout << "===========================\n"; 
+        while (true) 
+        { 
+            cout << "\n===========================\n"; 
+            cout << "User Menu\n"; 
+            cout << "===========================\n"; 
+            cout << "1. View Available Turfs\n"; 
+            cout << "2. Book a Turf\n"; 
+            cout << "3. View My Bookings\n"; 
+            cout << "0. Back to Main Menu\n"; 
+            cout << "Enter your choice: "; 
+            cin >> choice; 
+            if (choice == 1) 
+            { 
+                viewAvailableTurfs(); 
+            } 
+            else if (choice == 2) 
+            { 
+                bookTurf(); 
+            } 
+            else if (choice == 3) 
+            { 
+                viewMyBookings(); 
+            } 
+            else if (choice == 0) 
+            { 
+                cout << "Returning to Main Menu...\n"; 
+                break; 
+            } 
+            else 
+            { 
+                cout << "Wrong choice. Try again.\n"; 
+            } 
+        } 
+    } 
+}; 
+void interfaceadmin() 
+{ 
+    Admin ad; 
+    int choice; 
+    while (true) 
+    { 
+        cout << "===========================\n"; 
+        cout << "Admin panel\n"; 
+        cout << "===========================\n"; 
+        cout << "1.Signup\n2.Login\n3.Back\n4.Exit\n"; 
+        cout << "Enter your choice: "; 
+        cin >> choice; 
+        if (choice == 1) 
+        { 
+            ad.signup(); 
+        } 
+        else if (choice == 2) 
+        { 
+            ad.login(); 
+        } 
+        else if (choice == 3) 
+        { 
+            break; 
+        } 
+        else if (choice == 4) 
+        { 
+            cout << "Goodbye! Thank you for using the Turf Management System\n"; 
+            exit(0); 
+        } 
+        else 
+        { 
+            cout << "*****Invalid choice. Try again.*****\n"; 
+        } 
+    } 
+} 
+ 
+// ========== Main Project ========== 
+ 
+void projectdescription() 
+{ 
+    cout << "BISMILLAHIR RAHMANIR RAHIM\n"; 
+    cout << "THIS IS A PROJECT ABOUT TURF MANAGEMENT SYSTEM\n"; 
+    cout << "======================================================\n"; 
+    cout << "THIS PROJECT IS MADE BY:\n"; 
+    cout << "1. TAFHIMUR RAHMAN SAMIN (C243172)\t2. MINHAJ UDDIN SANIM (C243177)\n"; 
+    cout << "3. RAKIBUL HOSSEN WASHE (C243161)\t4. ROBAYET CHY SALMAN (C243173)\n"; 
+} 
+int main() 
+{ 
+    int a; 
+    projectdescription(); 
+    while (true) 
+    { 
+        cout << "\n===========================\n"; 
+        cout << "  Turf Login System Menu\n"; 
+        cout << "===========================\n"; 
+        cout << "1. User\n2. Admin\n3. Exit\n"; 
+        cout << "Enter your choice: "; 
+        cin >> a; 
+        if (a == 1) 
+        { 
+            Customer c; 
+            c.interfaceUser(); 
+        } 
+        else if (a == 2) 
+        { 
+            interfaceadmin(); 
+        } 
+        else if (a == 3) 
+        { 
+            cout << "Goodbye! Thank you for using the Turf Management System\n"; 
+            break; 
+        } 
+        else 
+        { 
+            cout << "*****Invalid choice. Try again.*****\n"; 
+        } 
+    } 
+    return 0; 
+} 
+ 
