@@ -1,0 +1,20 @@
+#include<iostream>
+using namespace std;
+
+
+int sumofNN(int n){
+
+    if (n == 1){
+        return 1;
+    }
+
+    return n + sumofNN(n-1);
+}
+
+int main(){
+
+    int ans = sumofNN(6);
+
+    cout<<ans; 
+    return 0;
+}
